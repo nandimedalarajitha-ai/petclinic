@@ -35,7 +35,10 @@ jobs:
             echo "❌ all.yml not found!"
             exit 1
           fi
-          yq eval '. as $in | to_entries | .[] | "\(.key)=\(.value)"' "$CONFIG_FILE" >> $GITHUB_ENV
+
+          # Load YAML and write only valid KEY=VALUE pairs to $GITHUB_ENV
+          yq eval '. as $in | to_entries | .[] | "\(.key)=\(.value)"' "$CONFIG_FILE" \
+            | grep -E '^[A-Za-z0-9_]+=' >> $GITHUB_ENV
 
       # ☕ Step 4: Set up Java dynamically
       - name: Set up JDK ${{ env.JAVA_VERSION }}
