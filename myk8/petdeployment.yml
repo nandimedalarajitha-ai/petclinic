@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-petclinic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-petclinic
+  template:
+    metadata:
+      labels:
+        app: spring-petclinic
+    spec:
+      containers:
+        - name: spring-petclinic
+          image: mohancggrl/petclinic:v1
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: username
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: password
+          volumeMounts:
+            - name: config-volume
+              mountPath: /opt/petclinic/config/application.properties
+              subPath: application.properties
+      volumes:
+        - name: config-volume
+          configMap:
+            name: spring-app-config

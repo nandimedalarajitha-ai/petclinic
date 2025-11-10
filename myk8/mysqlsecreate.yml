@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-credentials
+type: Opaque
+data:
+  username: cGV0dXNlcg==       # base64 of 'petuser'
+  password: TW9oYW5AMTIz        # base64 of 'Mohan@123'

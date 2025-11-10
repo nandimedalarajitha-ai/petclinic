@@ -1,0 +1,197 @@
+# =========================
+# 1️⃣ MySQL Secret
+# =========================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-credentials
+  namespace: default
+type: Opaque
+data:
+  username: cGV0dXNlcg==       # base64 of 'petuser'
+  password: TW9oYW5AMTIz        # base64 of 'Mohan@123'
+
+---
+# =========================
+# 2️⃣ MySQL Deployment (Fargate-friendly)
+# =========================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: password
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: username
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: password
+            - name: MYSQL_DATABASE
+              value: petclinicdb
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-storage
+          emptyDir: {}   # Fargate-compatible
+
+---
+# =========================
+# 3️⃣ MySQL Service
+# =========================
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-dbs
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3306
+      targetPort: 3306
+  selector:
+    app: mysql
+
+---
+# =========================
+# 4️⃣ Spring Boot ConfigMap
+# =========================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spring-app-config
+  namespace: default
+data:
+  application.properties: |
+    spring.datasource.url=jdbc:mysql://mysql-db.default.svc.cluster.local:3306/petclinicdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    spring.datasource.username=${MYSQL_USER}
+    spring.datasource.password=${MYSQL_PASSWORD}
+    spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+    spring.jpa.hibernate.ddl-auto=update
+    spring.jpa.show-sql=true
+    spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+    spring.jpa.open-in-view=false
+
+    spring.sql.init.mode=always
+    spring.sql.init.schema-locations=classpath*:db/mysql/schema.sql
+    spring.sql.init.data-locations=classpath*:db/mysql/data.sql
+
+    spring.thymeleaf.mode=HTML
+    spring.messages.basename=messages/messages
+    management.endpoints.web.exposure.include=*
+    logging.level.root=INFO
+    logging.level.org.springframework=INFO
+    logging.pattern.console=%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n
+    spring.web.resources.cache.cachecontrol.max-age=12h
+    server.port=8080
+
+---
+# =========================
+# 5️⃣ Spring Petclinic Deployment
+# =========================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-petclinic
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spring-petclinic
+  template:
+    metadata:
+      labels:
+        app: spring-petclinic
+    spec:
+      initContainers:
+        - name: wait-for-mysql
+          image: mysql:8.0
+          command:
+            - sh
+            - -c
+            - |
+              until mysqladmin ping -h mysql-db.default.svc.cluster.local -u petuser -p$MYSQL_PASSWORD --silent; do
+                echo "Waiting for MySQL..."
+                sleep 5
+              done
+          env:
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: password
+      containers:
+        - name: spring-petclinic
+          image: mohancggrl/petclinic:v1
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: username
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-credentials
+                  key: password
+          volumeMounts:
+            - name: config-volume
+              mountPath: /opt/petclinic/config/application.properties
+              subPath: application.properties
+      volumes:
+        - name: config-volume
+          configMap:
+            name: spring-app-config
+
+---
+# =========================
+# 6️⃣ Spring Petclinic Service
+# =========================
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-petclinic-svc
+  namespace: default
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: spring-petclinic
