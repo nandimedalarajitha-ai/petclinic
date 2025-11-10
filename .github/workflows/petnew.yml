@@ -43,12 +43,7 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
-
-      # 🧰 Step 5: Set up Maven dynamically
-      - name: Set up Maven ${{ env.MAVEN_VERSION }}
-        uses: s4u/setup-maven-action@v1.13.0
-        with:
-          maven-version: ${{ env.MAVEN_VERSION }}
+          cache: maven
 
       # 🧪 Step 6: Display versions (optional sanity check)
       - name: Verify tool versions
