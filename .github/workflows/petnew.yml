@@ -1,0 +1,98 @@
+name: Petclinic CI/CD
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+      - stage
+  workflow_dispatch:
+    inputs:
+      docker_tag:
+        description: 'Docker image tag (e.g. latest, v1.0)'
+        required: true
+        default: 'latest'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # 🧱 Step 1: Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 🧩 Step 3: Load all tool and build variables from YAML
+      - name: Load tool versions and build variables
+        run: |
+          CONFIG_FILE="vars/all.yml"
+          echo "📦 Loading variables from $CONFIG_FILE ..."
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "❌ all.yml not found!"
+            exit 1
+          fi
+          yq eval '. as $in | to_entries | .[] | "\(.key)=\(.value)"' "$CONFIG_FILE" >> $GITHUB_ENV
+
+      # ☕ Step 4: Set up Java dynamically
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      # 🧰 Step 5: Set up Maven dynamically
+      - name: Set up Maven ${{ env.MAVEN_VERSION }}
+        uses: s4u/setup-maven-action@v1
+        with:
+          maven-version: ${{ env.MAVEN_VERSION }}
+
+      # 🧪 Step 6: Display versions (optional sanity check)
+      - name: Verify tool versions
+        run: |
+          echo "☕ Java version:"
+          java -version
+          echo "🔧 Maven version:"
+          mvn -v
+
+      # 🧱 Step 7: Build the application
+      - name: Build with Maven
+        run: |
+          echo "🚀 Building project for environment: $ENVIRONMENT"
+          mvn clean install ${{ env.BUILD_OPTS }} -s ./settings.xml
+
+      # 🐳 Step 8: Docker login
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      # 🧩 Step 9: Build and push Docker image
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.PACKAGE_DIR }}
+          push: true
+          tags: ${{ env.DOCKER_IMAGE }}:${{ github.event.inputs.docker_tag }}
+
+      # 🧹 Step 10: Cleanup
+      - name: Cleanup workspace
+        run: |
+          echo "🧹 Cleaning up workspace..."
+          sudo rm -rf *
+
+      # ✅ Step 11: Success message
+      - name: Success message
+        if: ${{ success() }}
+        run: |
+          echo "✅ Successfully built and pushed image for $ENVIRONMENT"
+          echo "Image: ${{ env.DOCKER_IMAGE }}:${{ github.event.inputs.docker_tag }}"
+
+      # ❌ Step 12: Failure message
+      - name: Failure message
+        if: ${{ failure() }}
+        run: echo "❌ Build failed. Check logs for details."
