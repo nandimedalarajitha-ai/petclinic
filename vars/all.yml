@@ -1,0 +1,13 @@
+JAVA_VERSION: 21
+MAVEN_VERSION: 3.9.9
+
+# ===== BUILD SETTINGS =====
+PACKAGE_DIR: .
+BUILD_OPTS: "-DskipTests"
+
+# ===== DOCKER SETTINGS =====
+DOCKER_IMAGE: "mohancggrl/petclinic"
+
+# ===== GENERAL =====
+LOG_LEVEL: info
+RETRY_COUNT: 3

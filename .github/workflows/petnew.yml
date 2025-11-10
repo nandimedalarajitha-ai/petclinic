@@ -33,19 +33,39 @@ jobs:
             sudo chmod +x /usr/local/bin/yq
             yq --version
 
-      # 🧩 Step 3: Load all tool and build variables from YAML
       - name: Load tool versions and build variables
         run: |
           CONFIG_FILE="vars/all.yml"
           echo "📦 Loading variables from $CONFIG_FILE ..."
+
           if [ ! -f "$CONFIG_FILE" ]; then
-            echo "❌ all.yml not found!"
+            echo "❌ File not found: $CONFIG_FILE"
+            ls -R
             exit 1
           fi
 
-          # Load YAML and write only valid KEY=VALUE pairs to $GITHUB_ENV
+          echo "🔍 YAML content:"
+          cat "$CONFIG_FILE"
+          echo "========================"
+
+          if ! yq eval '.' "$CONFIG_FILE" >/dev/null 2>&1; then
+            echo "❌ Invalid YAML syntax detected!"
+            exit 1
+          fi
+
           yq eval '. as $in | to_entries | .[] | "\(.key)=\(.value)"' "$CONFIG_FILE" \
-            | grep -E '^[A-Za-z0-9_]+=' >> $GITHUB_ENV
+            | grep -E '^[A-Za-z0-9_]+=' > vars.env || true
+
+          echo "✅ Processed variables:"
+          cat vars.env || true
+
+          if [ ! -s vars.env ]; then
+            echo "❌ No valid variables found — check YAML keys."
+            exit 1
+          fi
+
+          cat vars.env >> $GITHUB_ENV
+          echo "✅ Environment variables loaded successfully."
 
       # ☕ Step 4: Set up Java dynamically
       - name: Set up JDK ${{ env.JAVA_VERSION }}
