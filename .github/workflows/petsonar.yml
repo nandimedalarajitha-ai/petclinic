@@ -90,14 +90,14 @@ jobs:
         run: |
             echo "🔍 Running SonarQube analysis..."
             mvn verify sonar:sonar \
-            -DskipTests \
-            -Dcheckstyle.skip=true \
-            -Dspring-javaformat.skip=true \
-            -Dnohttp.check.skip=true \
-            -Dsonar.projectBaseDir=. \
-            -Dsonar.host.url=$SONAR_HOST_URL \
-            -Dsonar.login=$SONAR_TOKEN
-
+                -DskipTests \
+                -Dcheckstyle.skip=true \
+                -Dspring-javaformat.skip=true \
+                -Dnohttp.check.skip=true \
+                -Dsonar.projectBaseDir=. \
+                -Dsonar.host.url=$SONAR_HOST_URL \
+                -Dsonar.login=$SONAR_TOKEN
+            ls -ltra target/*
 
       # 🐳 Step 8: Docker login
       - name: Docker Login
