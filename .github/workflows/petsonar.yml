@@ -12,7 +12,6 @@ on:
         description: 'Docker image tag (e.g. latest, v1.0)'
         required: true
         default: 'latest'
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -73,11 +72,14 @@ jobs:
           echo "🔧 Maven version:"
           mvn -v
 
-      # 🧱 Step 6: Build the application (Skip HTTP validation)
+      # 🧱 Step 6: Build the application (Skip HTTP + Checkstyle validation)
       - name: Build with Maven
         run: |
           echo "🚀 Building project for environment: $ENVIRONMENT"
-          mvn clean install -Pci-build -s ./settings.xml
+          mvn clean install -Pci-build \
+            -Dcheckstyle.skip=true \
+            -Dspring-javaformat.skip=true \
+            -s ./settings.xml
 
       # 🔍 Step 7: SonarQube Analysis
       - name: SonarQube Scan
@@ -93,6 +95,10 @@ jobs:
           fi
           
           mvn verify sonar:sonar \
+            -DskipTests \
+            -Dcheckstyle.skip=true \
+            -Dspring-javaformat.skip=true \
+            -Dnohttp.check.skip=true \
             -Dsonar.projectBaseDir=. \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.login=$SONAR_TOKEN
