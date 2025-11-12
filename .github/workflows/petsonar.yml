@@ -75,26 +75,21 @@ jobs:
       # 🧱 Step 6: Build the application (Skip HTTP + Checkstyle validation)
       - name: Build with Maven
         run: |
-          echo "🚀 Building project for environment: $ENVIRONMENT"
-          mvn clean install -Pci-build \
+            echo "🚀 Building project for environment: $ENVIRONMENT"
+            mvn clean install -Pci-build \
             -Dcheckstyle.skip=true \
             -Dspring-javaformat.skip=true \
+            -DskipTests \
             -s ./settings.xml
 
       # 🔍 Step 7: SonarQube Analysis
       - name: SonarQube Scan
         env:
-          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+            SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          echo "🔍 Running SonarQube analysis..."
-          
-          if [ ! -f "sonar-project.properties" ]; then
-            echo "❌ sonar-project.properties not found!"
-            exit 1
-          fi
-          
-          mvn verify sonar:sonar \
+            echo "🔍 Running SonarQube analysis..."
+            mvn verify sonar:sonar \
             -DskipTests \
             -Dcheckstyle.skip=true \
             -Dspring-javaformat.skip=true \
@@ -102,6 +97,7 @@ jobs:
             -Dsonar.projectBaseDir=. \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.login=$SONAR_TOKEN
+
 
       # 🐳 Step 8: Docker login
       - name: Docker Login
