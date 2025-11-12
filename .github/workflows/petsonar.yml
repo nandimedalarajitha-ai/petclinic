@@ -77,10 +77,11 @@ jobs:
         run: |
             echo "🚀 Building project for environment: $ENVIRONMENT"
             mvn clean install -Pci-build \
-            -Dcheckstyle.skip=true \
-            -Dspring-javaformat.skip=true \
-            -DskipTests \
-            -s ./settings.xml
+                -Dcheckstyle.skip=true \
+                -Dspring-javaformat.skip=true \
+                -DskipTests \
+                -s ./settings.xml
+            ls -ltra target/*
 
       # 🔍 Step 7: SonarQube Analysis
       - name: SonarQube Scan
@@ -97,7 +98,6 @@ jobs:
                 -Dsonar.projectBaseDir=. \
                 -Dsonar.host.url=$SONAR_HOST_URL \
                 -Dsonar.login=$SONAR_TOKEN
-            ls -ltra target/*
 
       # 🐳 Step 8: Docker login
       - name: Docker Login
