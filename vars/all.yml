@@ -11,4 +11,4 @@ DOCKER_IMAGE: "mohancggrl/petclinic"
 # ===== GENERAL =====
 LOG_LEVEL: info
 RETRY_COUNT: 3
-SONAR_HOST_URL: "http://44.246.164.242:9000/"
+SONAR_HOST_URL: "http://44.246.164.242:9000"
