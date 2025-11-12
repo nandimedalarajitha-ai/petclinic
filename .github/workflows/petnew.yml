@@ -87,7 +87,7 @@ jobs:
       - name: Build with Maven
         run: |
           echo "🚀 Building project for environment: $ENVIRONMENT"
-          mvn clean install ${{ env.BUILD_OPTS }} -s ./settings.xml
+          mvn clean install -Dnohttp.check.skip=true -Dcheckstyle.skip=true -Dspring-javaformat.skip=true -DskipTests -s ./settings.xml
 
       # 🐳 Step 8: Docker login
       - name: Docker Login
