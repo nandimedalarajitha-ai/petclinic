@@ -443,12 +443,12 @@
         </pluginManagement>
       </build>
     </profile>
+    <profile>
+      <id>ci-build</id>
+      <properties>
+        <nohttp.check.skip>true</nohttp.check.skip>
+        <spring-javaformat.skip>true</spring-javaformat.skip>
+      </properties>
+    </profile>
   </profiles>
-  <profile>
-    <id>ci-build</id>
-    <properties>
-      <nohttp.check.skip>true</nohttp.check.skip>
-      <spring-javaformat.skip>true</spring-javaformat.skip>
-    </properties>
-  </profile>
 </project>
