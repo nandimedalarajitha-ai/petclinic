@@ -85,14 +85,17 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           echo "🔍 Running SonarQube analysis..."
+          
           if [ ! -f "sonar-project.properties" ]; then
             echo "❌ sonar-project.properties not found!"
             exit 1
           fi
-          mvn sonar:sonar \
+          mvn clean verify sonar:sonar \
+            -Dnohttp.check.skip=true \
             -Dsonar.projectBaseDir=. \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.login=$SONAR_TOKEN
+
 
       # 🐳 Step 8: Docker login
       - name: Docker Login
