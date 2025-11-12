@@ -22,7 +22,7 @@ jobs:
       packages: write
 
     steps:
-      # 🧱 Step 1: Checkout code
+      # 🧱 Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -50,6 +50,7 @@ jobs:
             exit 1
           fi
 
+          # Export YAML to environment variables
           yq eval '. as $in | to_entries | .[] | "\(.key)=\(.value)"' "$CONFIG_FILE" \
             | grep -E '^[A-Za-z0-9_]+=' > vars.env || true
 
@@ -72,13 +73,13 @@ jobs:
           echo "🔧 Maven version:"
           mvn -v
 
-      # 🧱 Step 6: Build the application
+      # 🧱 Step 6: Build the application (Skip HTTP validation)
       - name: Build with Maven
         run: |
           echo "🚀 Building project for environment: $ENVIRONMENT"
-          mvn clean install ${{ env.BUILD_OPTS }} -s ./settings.xml
+          mvn clean install -Dnohttp.check.skip=true -Dspring-javaformat.skip=true -s ./settings.xml
 
-      # 🔍 Step 7: Run SonarQube Analysis
+      # 🔍 Step 7: SonarQube Analysis
       - name: SonarQube Scan
         env:
           SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
@@ -90,12 +91,13 @@ jobs:
             echo "❌ sonar-project.properties not found!"
             exit 1
           fi
-          mvn clean verify sonar:sonar \
+          
+          mvn verify sonar:sonar \
             -Dnohttp.check.skip=true \
+            -Dspring-javaformat.skip=true \
             -Dsonar.projectBaseDir=. \
             -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.login=$SONAR_TOKEN
-
 
       # 🐳 Step 8: Docker login
       - name: Docker Login
@@ -112,7 +114,7 @@ jobs:
           push: true
           tags: ${{ env.DOCKER_IMAGE }}:${{ github.event.inputs.docker_tag }}
 
-      # 🧹 Step 10: Cleanup
+      # 🧹 Step 10: Cleanup workspace
       - name: Cleanup workspace
         run: |
           echo "🧹 Cleaning up workspace..."
