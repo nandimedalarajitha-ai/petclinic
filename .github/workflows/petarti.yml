@@ -89,6 +89,17 @@ jobs:
           echo "🚀 Building project for environment: $ENVIRONMENT"
           mvn clean install -Dnohttp.check.skip=true -Dcheckstyle.skip=true -Dspring-javaformat.skip=true -DskipTests -s ./settings.xml
 
+
+    # ===================================
+    # 🔧 Allow HTTP (insecure) registry
+    # ===================================
+      - name: Configure Docker insecure registry
+        run: |
+            echo '{
+            "insecure-registries": ["${{ env.ARTIFACTORY_URL }}"]
+            }' | sudo tee /etc/docker/daemon.json
+            sudo systemctl restart docker
+            
       # ================================
       # 🔐 JFROG ARTIFACTORY LOGIN
       # ================================
