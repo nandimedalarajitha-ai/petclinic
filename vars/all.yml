@@ -6,9 +6,13 @@ PACKAGE_DIR: .
 BUILD_OPTS: "-DskipTests"
 
 # ===== DOCKER SETTINGS =====
-DOCKER_IMAGE: "mohancggrl/petclinic"
+# DOCKER_IMAGE: "mohancggrl/petclinic"
+DOCKER_IMAGE: "petclinic"
 
 # ===== GENERAL =====
 LOG_LEVEL: info
 RETRY_COUNT: 3
 SONAR_HOST_URL: "http://44.246.164.242:9000"
+
+ARTIFACTORY_URL: "44.245.219.19:8082"
+ARTIFACTORY_REPO: "images.petclinic"
