@@ -1,0 +1,110 @@
+pipeline {
+    agent { 
+        label 'master' 
+    }
+    parameters {
+        string(
+            name: 'rpm_version',
+            defaultValue: '1.0-1',
+            description: 'RPM package version in format VERSION-RELEASE (e.g., 1.0-1)'
+        )
+    }
+    environment {
+        arti_url = "http://artifactory.local:8081/artifactory"
+        repo_name = "petclinic-rpm-local"
+    }
+    tools {
+        jdk 'jdk17'
+    }
+    stages {
+        stage('Build with Maven') {
+            steps {
+                script {
+                    sh ''' 
+                        echo "🚀 Building project with Maven (skipping tests)..."
+                        mvn clean install -DskipTests -s ./settings.xml
+                    '''
+                }
+            }
+        }
+        stage('Build RPM Package') {
+            steps {
+                script {
+                    echo "📦 Building RPM for Petclinic..."
+
+                    // Extract version + release from input parameter
+                    def version = params.rpm_version.split("-")[0]
+                    def release = params.rpm_version.split("-")[1]
+
+                    echo "Using VERSION=${version}, RELEASE=${release}"
+
+                    sh """
+                        sudo yum install -y rpm-build rpmdevtools || true
+                        rm -rf rpmbuild
+                        mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+                        echo "%_topdir `pwd`/rpmbuild" > ~/.rpmmacros
+                        mv target/*.jar target/petclinic.jar
+                        cp target/petclinic.jar rpmbuild/SOURCES/
+                        cp rpm_dependencies/application.properties rpmbuild/SOURCES/
+                        cp rpm_dependencies/petclinic.service rpmbuild/SOURCES/
+                        cp rpm_dependencies/petclinic.spec rpmbuild/SPECS/
+                        # Update VERSION and RELEASE dynamically inside the SPEC file
+                        sed -i "s/^Version:.*/Version: ${version}/" rpmbuild/SPECS/petclinic.spec
+                        sed -i "s/^Release:.*/Release: ${release}%{?dist}/" rpmbuild/SPECS/petclinic.spec
+                        echo "📁 Using customized SPEC file:"
+                        #cat rpmbuild/SPECS/petclinic.spec
+                        rpmbuild -ba rpmbuild/SPECS/petclinic.spec
+                        echo "✅ RPM Build Completed Successfully!"
+                        ls -l rpmbuild/RPMS/*/*.rpm
+                    """
+
+                    archiveArtifacts artifacts: 'rpmbuild/RPMS/**/*', fingerprint: true
+                }
+            }
+        }
+        stage('Upload RPM to Artifactory') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'artifactory-creds',
+                        usernameVariable: 'ART_USER',
+                        passwordVariable: 'ART_PASS'
+                    )
+                ]) {
+                    script {
+                        echo "📦 Uploading RPM artifact to Artifactory..."
+
+                        def rpmFile = sh(
+                            script: "find rpmbuild/RPMS -name '*.rpm' | head -n 1",
+                            returnStdout: true
+                        ).trim()
+
+                        if (!rpmFile) {
+                            error "❌ No RPM file found under rpmbuild/RPMS !"
+                        }
+
+                        echo "Found RPM: ${rpmFile}"
+
+                        def repoUrl = "${env.arti_url}/${env.repo_name}"
+                        def artifactName = rpmFile.split('/')[-1]
+
+                        sh """
+                            curl -u $ART_USER:$ART_PASS \
+                                -T ${rpmFile} \
+                                "${repoUrl}/${artifactName}"
+                        """
+
+                        echo "✅ Successfully uploaded RPM: ${artifactName}"
+                    }
+                }
+            }
+        }
+
+    }
+    post {
+        always {
+            echo "🧹 Cleaning workspace..."
+            cleanWs()
+        }
+    }
+}
