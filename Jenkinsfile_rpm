@@ -10,7 +10,7 @@ pipeline {
         )
     }
     environment {
-        arti_url = "https://artifactory.local:8081/artifactory"
+        arti_url = "http://artifactory.local:8081/artifactory"
         repo_name = "petclinic-rpm-local"
     }
     tools {
