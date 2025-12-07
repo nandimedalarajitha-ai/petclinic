@@ -4,7 +4,7 @@ Release:        1%{?dist}
 Summary:        Spring Boot Petclinic Application
 
 License:        GPL
-URL:            http://example.com
+URL:            https://example.com
 BuildArch:      noarch
 
 Requires:       java-17-openjdk
